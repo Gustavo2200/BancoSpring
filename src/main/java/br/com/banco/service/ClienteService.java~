@@ -1,7 +1,6 @@
 package br.com.banco.service;
 
 import br.com.banco.dao.ClienteDao;
-import br.com.banco.dao.EnderecoDao;
 import br.com.banco.model.Cliente;
 import br.com.banco.model.Endereco;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -17,9 +16,6 @@ public class ClienteService {
 
     @Autowired
     private ClienteDao dao;
-
-    @Autowired
-    private EnderecoDao enderecoDao;
 
     public void cadastrar(Cliente cliente) {
         verificarDadosCliente(cliente);
@@ -54,7 +50,6 @@ public class ClienteService {
 
             throw new RuntimeException("Endereço inválido");
         }
-        enderecoDao.save(endereco);
     }
 
     private void validarDataNascimento(String dataNascimento) {

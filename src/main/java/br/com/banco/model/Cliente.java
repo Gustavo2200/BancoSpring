@@ -1,10 +1,7 @@
 package br.com.banco.model;
 
 import br.com.banco.model.enuns.TipoCliente;
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
+import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -23,10 +20,13 @@ public class Cliente {
     private Long id;
     private String nome;
     private String cpf;
-    private Date dataNascimento;
+    private String dataNascimento;
+
+    @OneToOne
+    @JoinColumn(name = "id_endereco")
     private Endereco endereco;
     private TipoCliente tipoCliente;
+
+    @OneToMany(mappedBy = "cliente")
     private List<Conta> contas;
-    private int senha;
-    private String chavePix;
 }

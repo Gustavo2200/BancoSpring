@@ -1,12 +1,15 @@
 package br.com.banco.service;
 
 import br.com.banco.dao.ContaDao;
+import br.com.banco.dao.TransferenciaDao;
 import br.com.banco.model.Conta;
 import br.com.banco.model.Transferencia;
+import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.Optional;
 
 @Service
@@ -15,11 +18,14 @@ public class ContaService {
     @Autowired
     private ContaDao contaDao;
 
+    @Autowired
+    private TransferenciaDao transferenciaDao;
+
     public void criarConta(Conta conta) {
         verificarContaExiste(conta);
         contaDao.save(conta);
     }
-
+    @Transactional
     public Transferencia transferenciaPix(String chavePix, Long idContaOrigem, BigDecimal valor){
         varificarValor(valor);
         Optional<Conta> contaOrigemOptional = buscarConta(idContaOrigem);
@@ -28,13 +34,18 @@ public class ContaService {
 
             Optional<Conta> contaDestinoOptional = buscarConta(buscarIdConta(chavePix));
             if(contaDestinoOptional.isPresent()) {
-                return contaDao.trasferir(idContaOrigem, contaDestinoOptional.get().getId(), valor);
+                Long idContaDestino = contaDestinoOptional.get().getId();
+
+                sacar(contaOrigemOptional.get().getId(), valor);
+                depositar(contaDestinoOptional.get().getId(), valor);
+
+                return registrarTransferencia(idContaOrigem, contaDestinoOptional.get().getId(), valor);
             }
             throw new RuntimeException("ContaDestino não encontrada");
         }
         throw new RuntimeException("ContaOrigem não encontrada");
     }
-
+    @Transactional
     public Transferencia transferenciaTed(int agencia, int numero, Long idContaOrigem, BigDecimal valor){
         varificarValor(valor);
         Optional<Conta> contaOrigemOptional = buscarConta(idContaOrigem);
@@ -43,7 +54,11 @@ public class ContaService {
 
             Optional<Conta> contaDestinoOptional = buscarConta(buscarIdConta(agencia, numero));
             if(contaDestinoOptional.isPresent()) {
-                return contaDao.trasferir(idContaOrigem, contaDestinoOptional.get().getId(), valor);
+
+                sacar(contaOrigemOptional.get().getId(), valor);
+                depositar(contaDestinoOptional.get().getId(), valor);
+
+                return registrarTransferencia(idContaOrigem, contaDestinoOptional.get().getId(), valor);
             }
             throw new RuntimeException("ContaDestino não encontrada");
         }
@@ -74,9 +89,7 @@ public class ContaService {
         varificarValor(valor);
         Optional<Conta> contaOptional = buscarConta(id);
         if (contaOptional.isPresent()) {
-            Conta conta = contaOptional.get();
-            conta.setSaldo(conta.getSaldo().add(valor));
-            contaDao.save(conta);
+            contaDao.depositar(id, valor);
         }
     }
 
@@ -85,10 +98,19 @@ public class ContaService {
         Optional<Conta> contaOptional = buscarConta(id);
         if (contaOptional.isPresent()) {
             Conta conta = contaOptional.get();
-            verificarSaldo(conta.getSaldo(), valor);
-            conta.setSaldo(conta.getSaldo().subtract(valor));
-            contaDao.save(conta);
+            verificarSaldo(conta.getSaldo(), valor);;
+            contaDao.sacar(id, valor);
         }
+    }
+
+    private Transferencia registrarTransferencia(Long idContaOrigem, Long idContaDestino, BigDecimal valor) {
+        Transferencia transferencia = new Transferencia();
+        transferencia.setIdContaOrigem(idContaOrigem);
+        transferencia.setIdContaDestino(idContaDestino);
+        transferencia.setValor(valor);
+        transferencia.setDataTransferencia(LocalDateTime.now());
+        transferenciaDao.save(transferencia);
+        return transferencia;
     }
 
     private Optional<Conta> buscarConta(Long id) {
@@ -97,14 +119,14 @@ public class ContaService {
 
     }
     private Long buscarIdConta(String chavePix) {
-        Optional<Long> idConta = contaDao.buscarIdConta(chavePix);
+        Optional<Long> idConta = contaDao.findIdByChavePix(chavePix);
         if(idConta.isPresent()){
             return idConta.get();
         }
         throw new RuntimeException("Conta não encontrada");
     }
     private Long buscarIdConta(int agencia, int numero) {
-        Optional<Long> idConta = contaDao.buscarIdConta(agencia, numero);
+        Optional<Long> idConta = contaDao.findIdByAgenciaAndNumero(agencia, numero);
         if(idConta.isPresent()){
             return idConta.get();
         }
@@ -112,7 +134,7 @@ public class ContaService {
     }
     private void verificarContaExiste(Conta conta) {
 
-        Optional<Long> idConta = contaDao.buscarIdConta(conta.getAgencia(), conta.getNumero());
+        Optional<Long> idConta = contaDao.findIdByAgenciaAndNumero(conta.getAgencia(), conta.getNumero());
 
         if (idConta.isPresent()) {
             throw new RuntimeException("Conta já cadastrada");

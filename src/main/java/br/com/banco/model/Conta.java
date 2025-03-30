@@ -1,10 +1,7 @@
 package br.com.banco.model;
 
 import br.com.banco.model.enuns.TipoConta;
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
+import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -24,7 +21,10 @@ public class Conta {
     private BigDecimal saldo;
     private int agencia;
 
-    private Long idCliente;
+    @ManyToOne
+    @JoinColumn(name = "id_cliente")
+    private Cliente cliente;
     private int senha;
     private TipoConta tipoConta;
+    private String chavePix;
 }
