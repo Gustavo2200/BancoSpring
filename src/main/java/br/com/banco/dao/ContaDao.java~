@@ -14,8 +14,8 @@ import java.util.Optional;
 @Repository
 public interface ContaDao extends JpaRepository<Conta, Long> {
 
-    Optional<Conta> findByChavePix(String chavePix);
+    Optional<Long> findIdByChavePix(String chavePix);
 
-    Optional<Conta> findByAgenciaAndNumero(int agencia, int numero);
+    Optional<Long> findIdByAgenciaAndNumero(int agencia, int numero);
 
 }
