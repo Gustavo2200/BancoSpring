@@ -24,18 +24,12 @@ public class ContaService {
     @Autowired
     private TransferenciaDao transferenciaDao;
 
-    private Random random = new Random();
+    private final Random random = new Random();
 
     public void criarConta(Conta conta) {
         verificarContaExiste(conta);
         popularDadosConta(conta);
         contaDao.save(conta);
-    }
-
-    private void popularDadosConta(Conta conta) {
-        conta.setSaldo(BigDecimal.ZERO);
-        conta.setNumero(random.nextInt(900000) + 100000);
-        conta.setAgencia(1221);
     }
 
     @Transactional
@@ -172,6 +166,26 @@ public class ContaService {
         if(saldo.compareTo(valor) < 0){
             throw new RuntimeException("Saldo insuficiente");
         }
+    }
+    private void popularDadosConta(Conta conta) {
+        conta.setSaldo(BigDecimal.ZERO);
+        conta.setNumero(random.nextInt(900000) + 100000);
+        conta.setAgencia(1221);
+
+        String regexCpf = "\\d{3}\\.\\d{3}\\.\\d{3}-\\d{2}";
+        if(conta.getChavePix() == null || conta.getChavePix().isEmpty() || !conta.getChavePix().matches(regexCpf)){
+            conta.setChavePix(generateChavePix(30));
+        }
+    }
+
+    private String generateChavePix(int valor) {
+        final String CARACTERES = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+        StringBuilder builder = new StringBuilder();
+        for (int i = 0; i < valor; i++) {
+            char randomChar = CARACTERES.charAt(random.nextInt(CARACTERES.length()));
+            builder.append(randomChar);
+        }
+        return builder.toString();
     }
 
 }

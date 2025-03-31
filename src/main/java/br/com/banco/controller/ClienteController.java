@@ -11,13 +11,13 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/cliente")
+@RequestMapping("/clientes")
 public class ClienteController {
 
     @Autowired
     private ClienteService service;
 
-    @PostMapping("/cadastrar")
+    @PostMapping
     public ResponseEntity<?> cadastrar(@RequestBody Cliente cliente){
         service.cadastrar(cliente);
         return new ResponseEntity<>(HttpStatus.CREATED);
