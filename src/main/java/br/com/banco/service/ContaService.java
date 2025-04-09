@@ -6,6 +6,8 @@ import br.com.banco.model.Conta;
 import br.com.banco.model.Transferencia;
 import br.com.banco.model.dto.TrasferenciaPixRequest;
 import br.com.banco.model.dto.TrasferenciaTedRequest;
+import br.com.banco.model.enuns.TipoCliente;
+import br.com.banco.model.enuns.TipoConta;
 import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -35,86 +37,108 @@ public class ContaService {
     @Transactional
     public Transferencia transferenciaPix(TrasferenciaPixRequest request){
         varificarValor(request.getValor());
-        Optional<Conta> contaOrigemOptional = buscarConta(request.getIdContaOrigem());
-        if(contaOrigemOptional.isPresent()) {
-            verificarSaldo(contaOrigemOptional.get().getSaldo(), request.getValor());
+        Conta contaOrigem = buscarConta(request.getIdContaOrigem());
+        verificarSaldo(contaOrigem.getSaldo(), request.getValor());
 
-            Optional<Conta> contaDestinoOptional = buscarConta(buscarIdConta(request.getChavePix()));
-            if(contaDestinoOptional.isPresent()) {
+        Conta contaDestino = buscarConta(buscarIdConta(request.getChavePix()));
 
-                if(contaOrigemOptional.get().getSenha() != request.getSenha()){
-                    throw new RuntimeException("Senha incorreta");
-                }
-                sacar(contaOrigemOptional.get().getId(), request.getValor());
-                depositar(contaDestinoOptional.get().getId(), request.getValor());
-
-                return registrarTransferencia(request.getIdContaOrigem(), contaDestinoOptional.get().getId(), request.getValor());
-            }
-            throw new RuntimeException("ContaDestino não encontrada");
+        if(contaOrigem.getSenha() != request.getSenha()){
+            throw new RuntimeException("Senha incorreta");
         }
-        throw new RuntimeException("ContaOrigem não encontrada");
+        sacar(contaOrigem.getId(), request.getValor());
+        depositar(contaDestino.getId(), request.getValor());
+
+        return registrarTransferencia(request.getIdContaOrigem(), contaDestino.getId(), request.getValor());
     }
     @Transactional
     public Transferencia transferenciaTed(TrasferenciaTedRequest request){
         varificarValor(request.getValor());
-        Optional<Conta> contaOrigemOptional = buscarConta(request.getIdOrigem());
-        if(contaOrigemOptional.isPresent()) {
-            verificarSaldo(contaOrigemOptional.get().getSaldo(), request.getValor());
 
-            Optional<Conta> contaDestinoOptional = buscarConta(buscarIdConta(request.getAgenciaDestino(), request.getNumeroContaDestino()));
-            if(contaDestinoOptional.isPresent()) {
-                if(contaOrigemOptional.get().getSenha() != request.getSenha()){
-                    throw new RuntimeException("Senha incorreta");
-                }
+        Conta contaOrigem = buscarConta(request.getIdOrigem());
+        verificarSaldo(contaOrigem.getSaldo(), request.getValor());
 
-                sacar(contaOrigemOptional.get().getId(), request.getValor());
-                depositar(contaDestinoOptional.get().getId(), request.getValor());
-
-                return registrarTransferencia(request.getIdOrigem(), contaDestinoOptional.get().getId(), request.getValor());
-            }
-            throw new RuntimeException("ContaDestino não encontrada");
+        Conta contaDestino = buscarConta(buscarIdConta(request.getAgenciaDestino(), request.getNumeroContaDestino()));
+        if(contaOrigem.getSenha() != request.getSenha()){
+            throw new RuntimeException("Senha incorreta");
         }
-        throw new RuntimeException("ContaOrigem não encontrada");
+
+        sacar(contaOrigem.getId(), request.getValor());
+        depositar(contaDestino.getId(), request.getValor());
+
+        return registrarTransferencia(request.getIdOrigem(), contaDestino.getId(), request.getValor());
     }
 
     public void fecharConta(Long id) {
-        Optional<Conta> conta = buscarConta(id);
-        if (conta.isPresent()) {
-            verificarContaExiste(conta.get());
-            if(conta.get().getSaldo().compareTo(BigDecimal.ZERO) == 0) {
-                contaDao.deleteById(id);
-            }
-            else{
-                throw new RuntimeException("Conta com saldo não pode ser fechada");
-            }
+        Conta conta = buscarConta(id);
+        verificarContaExiste(conta);
+        if(conta.getSaldo().compareTo(BigDecimal.ZERO) == 0) {
+            contaDao.deleteById(id);
+        }
+        else{
+            throw new RuntimeException("Conta com saldo não pode ser fechada");
         }
     }
     public BigDecimal exibirSldo(Long id) {
-        Optional<Conta> conta = buscarConta(id);
-        if (conta.isPresent()) {
-            return conta.get().getSaldo();
-        }
-        throw new RuntimeException("Conta não encontrada");
+        Conta conta = buscarConta(id);
+            return conta.getSaldo();
     }
 
     public  void depositar(Long id, BigDecimal valor) {
         varificarValor(valor);
-        Optional<Conta> contaOptional = buscarConta(id);
-        if (contaOptional.isPresent()) {
-            Conta conta = contaOptional.get();
-            conta.setSaldo(conta.getSaldo().add(valor));
-            contaDao.save(conta);
-        }
+        Conta conta = buscarConta(id);
+        conta.setSaldo(conta.getSaldo().add(valor));
+        contaDao.save(conta);
+
     }
 
     public void sacar(Long id, BigDecimal valor) {
         varificarValor(valor);
-        Optional<Conta> contaOptional = buscarConta(id);
-        if (contaOptional.isPresent()) {
-            Conta conta = contaOptional.get();
-            verificarSaldo(conta.getSaldo(), valor);
-            conta.setSaldo(conta.getSaldo().subtract(valor));
+        Conta conta = buscarConta(id);
+        verificarSaldo(conta.getSaldo(), valor);
+        conta.setSaldo(conta.getSaldo().subtract(valor));
+        contaDao.save(conta);
+
+    }
+    public Conta buscarConta(Long id) {
+        Optional<Conta> conta = contaDao.findById(id);
+        if (conta.isPresent()) {
+            return conta.get();
+        }
+        throw new RuntimeException("Conta não encontrada");
+
+    }
+
+    public void aplicarTaxaManutencao(Long id){
+        Conta conta = buscarConta(id);
+        if(conta.getTipoConta() == TipoConta.CORRENTE){
+            if(conta.getCliente().getTipoCliente() == TipoCliente.COMUM){
+                conta.setSaldo(conta.getSaldo().subtract(new BigDecimal("12.00")));
+            }
+            else if(conta.getCliente().getTipoCliente() == TipoCliente.SUPER){
+                conta.setSaldo(conta.getSaldo().subtract(new BigDecimal("8.00")));
+            }
             contaDao.save(conta);
+        }
+        else{
+            throw new RuntimeException("Essa conta não é uma conta corrente");
+        }
+    }
+
+    public void aplicarRendimento(Long id){
+        Conta conta = buscarConta(id);
+        if(conta.getTipoConta() == TipoConta.POUPANCA){
+            if(conta.getCliente().getTipoCliente() == TipoCliente.COMUM){
+                conta.setSaldo(conta.getSaldo().add(conta.getSaldo().multiply(new BigDecimal("0.005"))));
+            }
+            else if(conta.getCliente().getTipoCliente() == TipoCliente.SUPER){
+                conta.setSaldo(conta.getSaldo().add(conta.getSaldo().multiply(new BigDecimal("0.007"))));
+            } else if (conta.getCliente().getTipoCliente() == TipoCliente.PREMIUM) {
+                conta.setSaldo(conta.getSaldo().add(conta.getSaldo().multiply(new BigDecimal("0.009"))));
+            }
+            contaDao.save(conta);
+        }
+        else{
+            throw new RuntimeException("Essa conta não é uma conta poupança");
         }
     }
 
@@ -126,12 +150,6 @@ public class ContaService {
         transferencia.setDataTransferencia(LocalDateTime.now());
         transferenciaDao.save(transferencia);
         return transferencia;
-    }
-
-    private Optional<Conta> buscarConta(Long id) {
-
-        return contaDao.findById(id);
-
     }
     private Long buscarIdConta(String chavePix) {
         Optional<Conta> conta = contaDao.findByChavePix(chavePix);

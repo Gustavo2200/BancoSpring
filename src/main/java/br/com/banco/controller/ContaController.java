@@ -40,4 +40,30 @@ public class ContaController {
         service.depositar(id, valor);
         return new ResponseEntity<>(HttpStatus.OK);
     }
+
+    @GetMapping("/buscar/{id}")
+    public ResponseEntity<?> buscarContaPorId(@PathVariable Long id) {
+        return new ResponseEntity<>(service.buscarConta(id), HttpStatus.OK);
+    }
+
+    @GetMapping("/{id}/saldo")
+    public ResponseEntity<?> buscarSaldo(@PathVariable Long id) {
+        return new ResponseEntity<>(service.exibirSldo(id), HttpStatus.OK);
+    }
+
+    @PutMapping("/{id}/saque")
+    public ResponseEntity<?> sacar(@PathVariable Long id, @RequestBody BigDecimal valor) {
+        service.sacar(id, valor);
+        return new ResponseEntity<>(HttpStatus.OK);
+    }
+    @PutMapping("/{id}/manutencao")
+    public ResponseEntity<?> aplicarTaxaManutencao(@PathVariable Long id) {
+        service.aplicarTaxaManutencao(id);
+        return new ResponseEntity<>(HttpStatus.OK);
+    }
+    @PutMapping("/{id}/rendimentos")
+    public ResponseEntity<?> aplicarRendimento(@PathVariable Long id) {
+        service.aplicarRendimento(id);
+        return new ResponseEntity<>(HttpStatus.OK);
+    }
 }

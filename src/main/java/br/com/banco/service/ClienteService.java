@@ -4,13 +4,14 @@ import br.com.banco.dao.ClienteDao;
 import br.com.banco.dao.EnderecoDao;
 import br.com.banco.model.Cliente;
 import br.com.banco.model.Endereco;
+import br.com.banco.utils.MensagensDeErroUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.text.SimpleDateFormat;
-import java.time.LocalDateTime;
-import java.time.ZoneId;
 import java.util.Date;
+import java.util.List;
+import java.util.Optional;
 
 @Service
 public class ClienteService {
@@ -26,6 +27,46 @@ public class ClienteService {
         dao.save(cliente);
     }
 
+    public Cliente buscarPorId(Long id) {
+        Optional<Cliente> cliente = dao.findById(id);
+        if(cliente.isPresent()){
+            return cliente.get();
+        }
+        throw new RuntimeException(MensagensDeErroUtils.CLIENTE_NAO_ENCONTRADO);
+    }
+
+    public void atualizarCliente(Long id, Cliente cliente) {
+        Cliente clienteBanco = buscarPorId(id);
+
+        try {
+            validarEndereco(cliente.getEndereco());
+            validarNome(cliente.getNome());
+            validarCpf(cliente.getCpf());
+            validarDataNascimento(cliente.getDataNascimento());
+
+            clienteBanco.setNome(cliente.getNome());
+            clienteBanco.setCpf(cliente.getCpf());
+            clienteBanco.setDataNascimento(cliente.getDataNascimento());
+            clienteBanco.setEndereco(cliente.getEndereco());
+        }catch (Exception e) {
+
+            throw new RuntimeException(MensagensDeErroUtils.CLIENTE_NAO_ATUALIZADO + e.getMessage());
+        }
+
+        dao.save(clienteBanco);
+    }
+    public void apagarClientePorId(Long id) {
+        if(buscarPorId(id) != null){
+            dao.deleteById(id);
+        }
+        else {
+            throw new RuntimeException(MensagensDeErroUtils.CLIENTE_NAO_ENCONTRADO);
+        }
+    }
+    public List<Cliente> listarClientes() {
+        return dao.findAll();
+    }
+
     private void verificarDadosCliente(Cliente cliente) {
 
         verificarClienteExiste(cliente.getCpf());
@@ -38,21 +79,21 @@ public class ClienteService {
     private void verificarClienteExiste(String cpf) {
 
         if(dao.existsByCpf(cpf)){
-            throw new RuntimeException("CPF já cadastrado");
+            throw new RuntimeException(MensagensDeErroUtils.CPF_JA_CADASTRADO);
         }
     }
 
     private void validarEndereco(Endereco endereco) {
         String regexCep = "^\\d{5}-\\d{3}$";
         if(!endereco.getCep().matches(regexCep)){
-            throw new RuntimeException("Formato de CEP inválido");
+            throw new RuntimeException(MensagensDeErroUtils.CEP_INVALIDO);
         }
         if((endereco.getCidade() == null || endereco.getCidade().isEmpty()) ||
             (endereco.getEstado() == null || endereco.getEstado().isEmpty()) ||
             (endereco.getRua() == null || endereco.getRua().isEmpty()) ||
             (endereco.getNumero() == null || endereco.getNumero().isEmpty())) {
 
-            throw new RuntimeException("Endereço inválido");
+            throw new RuntimeException(MensagensDeErroUtils.ENDERECO_INVALIDO);
         }
         enderecoDao.save(endereco);
     }
@@ -67,7 +108,7 @@ public class ClienteService {
             dataNascimentoDate = sdf.parse(dataNascimento);
 
         }catch (Exception e){
-            throw new RuntimeException("Formato de data inválido");
+            throw new RuntimeException(MensagensDeErroUtils.FORMATO_DATA_INVALIDO);
         }
 
         Date dataAtual = new Date();
@@ -80,7 +121,7 @@ public class ClienteService {
         }
 
         if(idade < 18) {
-            throw new RuntimeException("Apenas maiores de 18 anos podem se cadastrar");
+            throw new RuntimeException(MensagensDeErroUtils.MENSAGEM_MENOR_DE_IDADE);
         }
 
     }
@@ -100,7 +141,7 @@ public class ClienteService {
                 CPF.equals("66666666666") || CPF.equals("77777777777") ||
                 CPF.equals("88888888888") || CPF.equals("99999999999") ||
                 (CPF.length() != 11)){
-            throw new RuntimeException("CPF inválido");
+            throw new RuntimeException(MensagensDeErroUtils.CPF_INVALIDO);
         }
 
         char dig10, dig11;
@@ -141,10 +182,10 @@ public class ClienteService {
 
             // Verifica se os digitos calculados conferem com os digitos informados.
             if ((dig10 != CPF.charAt(9)) && (dig11 != CPF.charAt(10))) {
-                throw new RuntimeException("CPF inválido");
+                throw new RuntimeException(MensagensDeErroUtils.CPF_INVALIDO);
             }
         } catch (Exception erro) {
-            throw new RuntimeException("CPF inválido");
+            throw new RuntimeException(MensagensDeErroUtils.CPF_INVALIDO);
         }
 
     }
@@ -154,10 +195,10 @@ public class ClienteService {
         String regex = "^[A-Za-zÀ-ÖØ-öø-ÿ ]+$";
 
         if(!nome.matches(regex)){
-            throw new RuntimeException("Nome deve conter apenas letras ou espacos");
+            throw new RuntimeException(MensagensDeErroUtils.FORMATO_NOME_INVALIDO);
         }
         else if(nome.length() < 2 || nome.length() > 100) {
-            throw new RuntimeException("Nome deve ter entre 2 e 100 caracteres");
+            throw new RuntimeException(MensagensDeErroUtils.TAMANHO_NOME_INVALIDO);
         }
     }
 }

@@ -1,6 +1,7 @@
 package br.com.banco.model;
 
 import br.com.banco.model.enuns.TipoCliente;
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -27,6 +28,7 @@ public class Cliente {
     private Endereco endereco;
     private TipoCliente tipoCliente;
 
+    @JsonManagedReference
     @OneToMany(mappedBy = "cliente")
     private List<Conta> contas;
 }
